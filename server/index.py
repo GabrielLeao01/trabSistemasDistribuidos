@@ -12,9 +12,10 @@ app = Flask(__name__)
 semaphore = threading.Semaphore()
 
 PROCESS_FOLDER = 'processos'
-SERVER_STATUS_PATH = 'serverStatus/serverStatus.csv'
+SERVER_STATUS_PATH = 'reports/serverStatus/serverStatus.csv'
 MAX_THREADS = 2
 CURRENT_THREADS = 0
+FILA_PATH = "fila.txt"
 
 def generate_random_id():
     return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz1234567890') for i in range(10))
@@ -37,7 +38,7 @@ def update_process_json(id_processo, sinal, isLast):
         data = json.load(f)
         data["sinal"].extend(sinal)
         if isLast:
-            with open(f"{PROCESS_FOLDER}/fila.txt", "a") as file:
+            with open(f"{FILA_PATH}", "a") as file:
                 file.write(id_processo + "\n")
         f.seek(0)
         json.dump(data, f, indent=4)
@@ -83,7 +84,7 @@ def popular_fila():
     count = 0
     while True:
         print("salvando processo na fila")
-        with open(f"{PROCESS_FOLDER}/fila.txt", "a") as f:
+        with open(f"{FILA_PATH}", "a") as f:
             f.write(f"processo-{count}\n")
         count += 1
         time.sleep(1)
@@ -92,7 +93,7 @@ def monitor_fila():
     while True:
         print("current threads", CURRENT_THREADS)
         if CURRENT_THREADS < MAX_THREADS:
-            with open(f"{PROCESS_FOLDER}/fila.txt", "r+") as f:
+            with open(f"{FILA_PATH}", "r+") as f:
                 lines = f.readlines()
                 
                 if(len(lines) > 0):

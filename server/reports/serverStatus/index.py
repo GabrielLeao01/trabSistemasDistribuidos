@@ -33,14 +33,14 @@ def plotar_graficos(df):
     
     dataInicio = df['created_at'][0]
     dataFim = df['created_at'][len(df)-1]
-    filename = f"serverStatus/serverStatus_{dataInicio.strftime('%Y-%m-%d_%H-%M-%S')}_{dataFim.strftime('%Y-%m-%d_%H-%M-%S')}.png"
+    filename = f"reports/serverStatus/serverStatus_{dataInicio.strftime('%Y-%m-%d_%H-%M-%S')}_{dataFim.strftime('%Y-%m-%d_%H-%M-%S')}.png"
     plt.savefig(filename)
     plt.show()
     
     
     plt.close()
 
-caminho_arquivo = 'serverStatus/serverStatus.csv'
+caminho_arquivo = 'reports/serverStatus/serverStatus.csv'
 
 df = ler_arquivo(caminho_arquivo)
 
