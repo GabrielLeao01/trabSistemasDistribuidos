@@ -6,11 +6,13 @@ import random
 import threading
 from datetime import datetime
 from flask import Flask, request, send_from_directory, jsonify
+import psutil
 
 app = Flask(__name__)
 semaphore = threading.Semaphore()
 
 PROCESS_FOLDER = 'processos'
+SERVER_STATUS_PATH = 'serverStatus/serverStatus.csv'
 MAX_THREADS = 2
 CURRENT_THREADS = 0
 
@@ -139,5 +141,24 @@ def get_imagem(id_processo):
         else:
             return jsonify({"message": "O processo ainda está em andamento"}), 202
 
+
+def monit_server():
+    with open(SERVER_STATUS_PATH, 'w') as f:
+        f.seek(0)
+        f.write("created_at;cpu_porcentagem;ram_porcentage;ram_gb\n")
+        f.truncate()
+    
+    while True:
+        with open(SERVER_STATUS_PATH, 'a') as f:
+            cpu = psutil.cpu_percent()
+            ram_porcentage = psutil.virtual_memory()[2]
+            ram_gb = psutil.virtual_memory()[3]/1000000000
+            createdAt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"{createdAt};{"{:.2f}".format(cpu)};{"{:.2f}".format(ram_porcentage)};{"{:.2f}".format(ram_gb)}\n")
+            
+        time.sleep(1)
+        
+        
+threading.Thread(target=monit_server).start()
 threading.Thread(target=monitor_fila).start()
 app.run(debug=False)
