@@ -8,8 +8,11 @@ from datetime import datetime
 from flask import Flask, request, send_from_directory, jsonify
 
 app = Flask(__name__)
+semaphore = threading.Semaphore()
 
 PROCESS_FOLDER = 'processos'
+MAX_THREADS = 2
+CURRENT_THREADS = 0
 
 def generate_random_id():
     return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz1234567890') for i in range(10))
@@ -38,7 +41,21 @@ def update_process_json(id_processo, sinal, isLast):
         json.dump(data, f, indent=4)
         f.truncate()
 
+def increment_current_threads():
+    semaphore.acquire()
+    global CURRENT_THREADS
+    CURRENT_THREADS += 1
+    semaphore.release()
+    
+def decrement_current_threads():
+    semaphore.acquire()
+    global CURRENT_THREADS
+    CURRENT_THREADS -= 1
+    semaphore.release()
+    
 def process_image(id_processo):
+    increment_current_threads()
+    
     process_folder_path = f"{PROCESS_FOLDER}/{id_processo}"
     with open(f"{process_folder_path}/processo.json", 'r+') as f:
         data = json.load(f)
@@ -57,18 +74,38 @@ def process_image(id_processo):
     imagem_decodificada = base64.b64decode(imagem_base64)
     with open(f"{process_folder_path}/imagem.jpg", "wb") as f:
         f.write(imagem_decodificada)
+        
+    decrement_current_threads()
+
+def popular_fila():
+    count = 0
+    while True:
+        print("salvando processo na fila")
+        with open(f"{PROCESS_FOLDER}/fila.txt", "a") as f:
+            f.write(f"processo-{count}\n")
+        count += 1
+        time.sleep(1)
 
 def monitor_fila():
     while True:
-        with open(f"{PROCESS_FOLDER}/fila.txt", "r") as f:
-            lines = f.readlines()
-            for line in lines:
-                id_processo = line.strip()
-                if id_processo:
-                    thread = threading.Thread(target=process_image, args=(id_processo,))
+        print("current threads", CURRENT_THREADS)
+        if CURRENT_THREADS < MAX_THREADS:
+            with open(f"{PROCESS_FOLDER}/fila.txt", "r+") as f:
+                lines = f.readlines()
+                
+                if(len(lines) > 0):
+                    idProcesso = lines[0].strip()
+                    print(f"VAI PROCESSAR -{idProcesso}-")
+                    thread = threading.Thread(target=process_image, args=(idProcesso,))
+                    
                     thread.start()
-                    with open(f"{PROCESS_FOLDER}/fila.txt", "w") as f:
-                        f.writelines(lines[1:])
+                    del lines[0]
+                    
+                    f.seek(0)
+                    f.writelines(lines)
+                    f.truncate()
+        else:
+            print("Max threads reached")
         time.sleep(1)
 
 @app.route('/processo', methods=['POST'])
@@ -102,6 +139,5 @@ def get_imagem(id_processo):
         else:
             return jsonify({"message": "O processo ainda está em andamento"}), 202
 
-if __name__ == '__main__':
-    threading.Thread(target=monitor_fila).start()
-    app.run(debug=True)
+threading.Thread(target=monitor_fila).start()
+app.run(debug=False)

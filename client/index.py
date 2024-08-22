@@ -72,7 +72,7 @@ def main():
                 for i, pedaço in enumerate(pedacos_sinal):
                     print(f"Enviando pedaço {i+1}/{len(pedacos_sinal)}")
                     enviar_sinal(id_processo, pedaço, isLast=(i == len(pedacos_sinal) - 1))
-                    time.sleep(random.randint(2, 5))
+                    time.sleep(random.randint(1, 2))
             else:
                 print(f"Erro ao criar processo: {response.status_code}")
 
