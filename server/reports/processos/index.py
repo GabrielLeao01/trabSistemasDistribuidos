@@ -34,6 +34,7 @@ def criar_relatorio_pdf(dados_json, caminho_imagem, caminho_pdf):
     dataFimProcessamento = datetime.strptime(dados_json['dataFimProcessamento'], "%Y-%m-%d %H:%M:%S")
     tipoAlgoritmo = dados_json['tipoAlgoritmo']  
     nomeUsuario = dados_json['nomeUsuario']
+    iteracoes = dados_json['iteracoes']
     
     tempoProcessamento = dataFimProcessamento - dataInicioProcessamento
     tempoSegundos = tempoProcessamento.total_seconds()
@@ -43,6 +44,7 @@ def criar_relatorio_pdf(dados_json, caminho_imagem, caminho_pdf):
     elementos.append(Paragraph(f"<b>Data de fim de processamento:</b> {dataFimProcessamento.strftime('%d/%m/%Y %H:%M:%S')}", styles['Normal']))
     elementos.append(Paragraph(f"<b>Tempo de Processamento:</b> {tempoSegundos} segundos", styles['Normal']))
     elementos.append(Paragraph(f"<b>Tipo de Algoritmo:</b> {tipoAlgoritmo}", styles['Normal']))
+    elementos.append(Paragraph(f"<b>Qtd Iterações</b> {iteracoes}", styles['Normal']))
     elementos.append(Paragraph(f"<b>Nome do Usuário:</b> {nomeUsuario}", styles['Normal']))
 
     caminho_grafico = "grafico_sinal.png"
@@ -62,7 +64,7 @@ PDF_FOLDER = "reports/processos"
 
 for processoId in os.listdir(PROCESS_FOLDER):
     print(f"Processando relatório: {processoId}")
-    imagem_path = f"{PROCESS_FOLDER}/{processoId}/imagem.jpg"
+    imagem_path = f"{PROCESS_FOLDER}/{processoId}/imagem.png"
     json_path = f"{PROCESS_FOLDER}/{processoId}/processo.json"
     pdf_path = f"{PDF_FOLDER}/report_{processoId}.pdf"
 

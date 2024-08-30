@@ -2,24 +2,42 @@ import os
 import requests
 import time
 import random
+import numpy as np
 
 SINAL_FOLDER = "sinais"
 PROCESS_FOLDER = "processos"
 SERVER_URL = "http://localhost:5000"
-TIPOS_ALGORITMOS = ["A", "B"]
-TIPOS_SINAIS = ["sinal1", "sinal2", "sinal3"]
-TAMANHO_CHUNK = 5
+TIPOS_ALGORITMOS = ["CGNR", "CGNE"]
+TIPOS_SINAIS = ["A_30x30.csv", "B_30x30.csv", "C_30x30.csv", "A_60x60.csv", "B_60x60.csv", "C_60x60.csv"]
+
+def lerArquivoCSV(caminho_arquivo):
+    with open(caminho_arquivo, 'r') as file:
+        lines = file.readlines()
+        data = []
+        for line in lines:
+            data.append([float(x) for x in line.strip().split(',')])
+        return np.array(data)
+
+def calculate_signal(g):
+    n = 64
+    s = 794 if len(g) > 50000 else 436
+    for c in range(n):
+        for l in range(s):
+            y = 100 + (1/20) * l * np.sqrt(l)
+            g[l + c * s] = g[l + c * s] * y
+            
+    return g
 
 def ler_sinal(tipo_sinal):
     """Lê o sinal de um arquivo e retorna um array de números."""
-    with open(f"{SINAL_FOLDER}/{tipo_sinal}.txt", "r") as f:
-        sinal = [int(line.strip()) for line in f]
-    return sinal
+    sinal = lerArquivoCSV(f"{SINAL_FOLDER}/{tipo_sinal}")[:,0]
+    sinalGanho = calculate_signal(sinal)
+    return sinalGanho
 
-def enviar_sinal(id_processo, sinal, isLast=False):
+def enviar_sinal(id_processo, sinal: np.ndarray, isLast=False):
     """Envia um sinal para o servidor."""
     url = f"{SERVER_URL}/processo/{id_processo}"
-    data = {"sinal": sinal, "isLast": isLast}
+    data = {"sinal": sinal.tolist(), "isLast": isLast}
     response = requests.patch(url, json=data)
     if response.status_code == 200:
         print("Sinal enviado com sucesso.")
@@ -32,7 +50,7 @@ def capturar_imagem(id_processo):
     response = requests.get(url)
     if response.status_code == 200:
         # Salva a imagem na pasta do processo
-        image_path = f"{PROCESS_FOLDER}/{id_processo}/imagem.jpg"
+        image_path = f"{PROCESS_FOLDER}/{id_processo}/imagem.png"
         with open(image_path, "wb") as f:
             f.write(response.content)
         print(f"Imagem capturada e salva em {image_path}")
@@ -64,10 +82,11 @@ def main():
                 # Lê o sinal
                 tipo_sinal = random.choice(TIPOS_SINAIS)
                 sinal = ler_sinal(tipo_sinal)
-
-                # Divide o sinal em pedaços de até TAMANHO_CHUNK posições
-                pedacos_sinal = [sinal[i:i + TAMANHO_CHUNK] for i in range(0, len(sinal), TAMANHO_CHUNK)]
-
+                
+                porcentagem = random.randint(10, 20)
+                tamanho_chunk = int(len(sinal) * porcentagem / 100)
+                pedacos_sinal = [sinal[i:i + tamanho_chunk] for i in range(0, len(sinal), tamanho_chunk)]
+                
                 # Envia os pedaços de sinal
                 for i, pedaço in enumerate(pedacos_sinal):
                     print(f"Enviando pedaço {i+1}/{len(pedacos_sinal)}")
@@ -80,7 +99,7 @@ def main():
             # Mostra os processos sem imagem
             processos_sem_imagem = []
             for processo in os.listdir("processos"):
-                imagem_path = f"{PROCESS_FOLDER}/{processo}/imagem.jpg"
+                imagem_path = f"{PROCESS_FOLDER}/{processo}/imagem.png"
                 if not os.path.exists(imagem_path):
                     processos_sem_imagem.append(processo)
 
