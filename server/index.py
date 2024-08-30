@@ -7,6 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, request, send_from_directory, jsonify
 import psutil
+import numpy as np
 
 app = Flask(__name__)
 semaphore = threading.Semaphore()
@@ -16,6 +17,7 @@ SERVER_STATUS_PATH = 'reports/serverStatus/serverStatus.csv'
 MAX_THREADS = 2
 CURRENT_THREADS = 0
 FILA_PATH = "fila.txt"
+erro = 1e-4
 
 def generate_random_id():
     return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz1234567890') for i in range(10))
@@ -88,6 +90,45 @@ def popular_fila():
             f.write(f"processo-{count}\n")
         count += 1
         time.sleep(1)
+
+
+def cgnr(h,g,tam_image):
+    f = np.zeros((tam_image)) 
+    r = g - np.dot(h, f)
+    z = np.dot(np.transpose(h), r)
+    p = z
+    for i in range(0,30):
+        w = np.dot(h, p)
+        a = np.linalg.norm(z,ord=2) ** 2 / np.linalg.norm(w,ord=2) ** 2
+        f = f + np.dot(a, p)
+        r_ant = r
+        r = r - np.dot(a, w)
+        z_ant = z
+        z = np.dot(np.transpose(h), r)
+        beta = np.linalg.norm(z,ord=2) ** 2 / np.linalg.norm(z_ant,ord=2) ** 2
+        p = z + np.dot(beta, p)
+        if(calcula_erro(r,r_ant) < erro):
+            break
+    return f,i
+
+def cgne(h,g,tam_image):
+    f = np.zeros((tam_image))
+    r = g - np.dot(h, f)
+    p = np.dot(np.transpose(h), r)
+    for i in range(0,30):
+        r_ant = r
+        a = np.dot(np.transpose(r), r)/np.dot(np.transpose(p), p)
+        f = f + a*p
+        r = r - np.dot(a,np.dot(h, p))  
+        Beta = np.dot(np.transpose(r), r)/np.dot(np.transpose(r_ant), r_ant)
+        p = np.dot(np.transpose(h), r) + np.dot(Beta, p)
+        if(calcula_erro(r,r_ant)< erro):
+            break
+    return f,i
+
+
+def calcula_erro(r,r_ant):
+    return abs(np.linalg.norm(r, ord=2) - np.linalg.norm(r_ant, ord=2))
 
 def monitor_fila():
     while True:
